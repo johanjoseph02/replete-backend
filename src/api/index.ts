@@ -1,9 +1,9 @@
 import { Router } from 'express';
+import restaurantRoute from './restaurant/routes';
 
 export default (): Router => {
-  const app = Router();
+    const app = Router(); 
+    app.use('/restaurant', restaurantRoute);
 
-  //TODO: add routes here...
-
-  return app;
+    return app;
 };
