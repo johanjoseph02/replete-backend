@@ -2,6 +2,7 @@ import { NextFunction, Request, Response, Router } from 'express';
 import supabase from '../../loaders/database';
 import { registerSchema } from './registerSchema';
 import { loginSchema } from './loginSchema';
+import { updateSchema } from './updateSchema';
 import yupValidate from '../../middleware/yupValidate';
 import bcrypt from 'bcryptjs';
 import validateRecaptcha from '../../middleware/validateCaptcha';
@@ -24,7 +25,7 @@ restaurantRoute.post(
                 .eq('email', email);
 
             if (checkRegError)
-                throw { status: 500, message: `⛔️ SUPABASE : ${checkRegError}` } 
+                throw { status: 500, message: `⛔️ SUPABASE : ${checkRegError.message}` } 
             if (checkReg.length)
                 throw { status: 208, message: "⛔️ Already registered" }
 
@@ -49,7 +50,7 @@ restaurantRoute.post(
             if (regError)
             {
                 Logger.info(regError)
-                throw { status: 500, message: `⛔️ SUPABASE : ${regError}` } }
+                throw { status: 500, message: `⛔️ SUPABASE : ${regError.message}` } }
 
             res.status(200).json({ success: true, message: "🥳 Registered Successfully" });
             next();
@@ -73,18 +74,18 @@ restaurantRoute.get(
                 .eq('email', email);
 
             if (checkRestError)
-                throw { status: 500, message: `⛔️ SUPABASE : ${checkRestError}` }
+                throw { status: 500, message: `⛔️ SUPABASE : ${checkRestError.message}` }
 
             if (checkRest.length) {
-                const { data: rest, error: restError } = await supabase()
+                const { data: pass, error: passError } = await supabase()
                     .from('restaurants')
                     .select('pass')
                     .eq('email', email);
 
-                if (restError)
-                    throw { status: 500, message: `⛔️ SUPABASE : ${restError}` }
+                if (passError)
+                    throw { status: 500, message: `⛔️ SUPABASE : ${passError.message}` }
 
-                const validPass = await bcrypt.compare(password, rest[0].pass);
+                const validPass = await bcrypt.compare(password, pass[0].pass);
 
                 if (!validPass)
                     throw { status: 401, message: "⛔️ Invalid password" }
@@ -97,6 +98,47 @@ restaurantRoute.get(
                 next();
             }
 
+        }
+        catch (err) {
+            res.status(err.status || 500).json({ success: false, message: err.message });
+        }
+    }
+);
+
+restaurantRoute.put(
+    '/update',
+    yupValidate('body', updateSchema),
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { name, existingemail, email, mobile, address, fssai } = req.body;
+
+            const { data: checkRest, error: checkRestError } = await supabase()
+                .from('restaurants')
+                .select('email')
+                .eq('id', existingemail);
+
+            if (checkRestError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${checkRestError.message}` }
+            if (!checkRest.length)
+                throw { status: 404, message: "📮 Email not found" }
+
+            const { data: updateRest, error: updateRestError } = await supabase()
+                .from('restaurants')
+                .update({ 
+                    id: email,
+                    name: name,
+                    email: email,
+                    contactno: mobile,
+                    address: address,
+                    fssai: fssai,
+                })
+                .match({ id: existingemail });
+
+            if (updateRestError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${updateRestError.message}` }
+
+            res.status(200).json({ success: true, message: "🥳 Updated Successfully" });
+            next();
         }
         catch (err) {
             res.status(err.status || 500).json({ success: false, message: err.message });
