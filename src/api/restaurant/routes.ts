@@ -7,7 +7,6 @@ import { listSchema } from './listSchema';
 import yupValidate from '../../middleware/yupValidate';
 import bcrypt from 'bcryptjs';
 import validateRecaptcha from '../../middleware/validateCaptcha';
-import Logger from '../../loaders/logger';
 
 const restaurantRoute = Router();
 
@@ -104,7 +103,7 @@ restaurantRoute.get(
     }
 );
 
-restaurantRoute.get(
+restaurantRoute.delete(
     '/deregister',
     yupValidate('body', loginSchema),
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -212,9 +211,7 @@ restaurantRoute.post(
     yupValidate('body', listSchema),
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const { restaurant_email, meals, dairy, allergens, veg, pickup } = req.body;
-
-            Logger.info(restaurant_email)
+            const { restaurant_email, expirationdate, meals, dairy, allergens, veg, pickup } = req.body;
 
             const { data: checkRest, error: checkRestError } = await supabase()
                 .from('restaurants')
@@ -241,14 +238,11 @@ restaurantRoute.post(
                 addr = address[0].address;
             }
 
-            Logger.info(restaurant_email, meals, dairy, allergens, veg, pickup)
-
-
-
             const { data: listMeal, error: listMealError } = await supabase()
                 .from('listings')
-                .upsert([
+                .insert([
                     {
+                        expiration_date: new Date(expirationdate),
                         meals: meals,
                         dairy: dairy,
                         allergens: allergens,
