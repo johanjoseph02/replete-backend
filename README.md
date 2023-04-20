@@ -21,7 +21,7 @@ Install dependencies
 
 ```
 $ yarn
-# or
+  or
 $ npm install
 ```
 
@@ -29,6 +29,6 @@ Start the server
 
 ```
 $ yarn start
-# or
+  or
 $ npm run start
 ```
