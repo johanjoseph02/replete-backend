@@ -6,6 +6,7 @@ import { updateSchema } from './updateSchema';
 import { listSchema } from './listSchema';
 import yupValidate from '../../middleware/yupValidate';
 import bcrypt from 'bcryptjs';
+import { nanoid } from 'nanoid';
 import validateRecaptcha from '../../middleware/validateCaptcha';
 
 const restaurantRoute = Router();
@@ -28,6 +29,18 @@ restaurantRoute.post(
                 throw { status: 500, message: `⛔️ SUPABASE : ${checkRegError.message}` } 
             if (checkReg.length)
                 throw { status: 208, message: "⛔️ Already registered" }
+
+
+            const { data: checkFssai, error: checkFssaiError } = await supabase()
+                .from('valid_fssai')
+                .select('licence_key')
+                .eq('licence_key', fssai);
+
+            if (checkFssaiError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${checkFssaiError.message}` }
+            if (!checkFssai.length)
+                throw { status: 404, message: "📮 INVALID FSSAI LICENCE KEY" }
+
 
             const saltrounds = 10;
             const hashed_password = await bcrypt.hash(password, saltrounds);
@@ -68,7 +81,7 @@ restaurantRoute.get(
 
             const { data: checkRest, error: checkRestError } = await supabase()
                 .from('restaurants')
-                .select('email')
+                .select('fssai')
                 .eq('email', email);
 
             if (checkRestError)
@@ -87,6 +100,16 @@ restaurantRoute.get(
 
                 if (!validPass)
                     throw { status: 401, message: "⛔️ Invalid password" }
+                
+                const { data: checkFssai, error: checkFssaiError } = await supabase()
+                    .from('valid_fssai')
+                    .select('licence_key')
+                    .eq('licence_key', checkRest[0].fssai);
+
+                if (checkFssaiError)
+                    throw { status: 500, message: `⛔️ SUPABASE : ${checkFssaiError.message}` }
+                if (!checkFssai.length)
+                    throw { status: 404, message: "📮 INVALID FSSAI LICENCE KEY, CONTACT ADMIN" }
 
                 res.status(200).json({ success: true, message: "🥳 Logged in Successfully" });
                 next();
@@ -212,6 +235,7 @@ restaurantRoute.post(
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const { restaurant_email, expirationdate, meals, dairy, allergens, veg, pickup } = req.body;
+            const unique_id = nanoid(15);
 
             const { data: checkRest, error: checkRestError } = await supabase()
                 .from('restaurants')
@@ -242,6 +266,7 @@ restaurantRoute.post(
                 .from('listings')
                 .insert([
                     {
+                        id: unique_id,
                         expiration_date: new Date(expirationdate),
                         meals: meals,
                         dairy: dairy,
