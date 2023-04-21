@@ -4,6 +4,8 @@ import { registerSchema } from './registerSchema';
 import { loginSchema } from './loginSchema';
 import { updateSchema } from './updateSchema';
 import { listSchema } from './listSchema';
+import { listedSchema } from './listedSchema';
+import { claimedSchema } from './claimedSchema';
 import yupValidate from '../../middleware/yupValidate';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
@@ -11,7 +13,7 @@ import validateRecaptcha from '../../middleware/validateCaptcha';
 
 const restaurantRoute = Router();
 
-restaurantRoute.use(validateRecaptcha);
+// restaurantRoute.use(validateRecaptcha);
 
 restaurantRoute.post(
     '/register',
@@ -281,6 +283,75 @@ restaurantRoute.post(
                 throw { status: 500, message: `⛔️ SUPABASE : ${listMealError.message}` }
 
             res.status(200).json({ success: true, message: "🥳 Listed Successfully" });
+            next();
+        }
+        catch (err) {
+            res.status(err.status || 500).json({ success: false, message: err.message });
+        }
+    }
+);
+
+restaurantRoute.get(
+    '/listed',
+    yupValidate('body', listedSchema),
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { email } = req.body;
+
+            const { data: checkRest, error: checkRestError } = await supabase()
+                .from('restaurants')
+                .select('email')
+                .eq('id', email);
+
+            if (checkRestError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${checkRestError.message}` }
+            if (!checkRest.length)
+                throw { status: 404, message: "📮 Email not found" }
+
+            const { data: getListings, error: getListingsError } = await supabase()
+                .from('listings')
+                .select('*')
+                .eq('restaurant_email', email);
+
+            if (getListingsError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${getListingsError.message}` }
+
+            res.status(200).json({ success: true, data: getListings });
+            next();
+        }
+        catch (err) {
+            res.status(err.status || 500).json({ success: false, message: err.message });
+        }
+    }
+);
+
+restaurantRoute.get(
+    '/claimed',
+    yupValidate('body', claimedSchema),
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { email } = req.body;
+
+            const { data: checkRest, error: checkRestError } = await supabase()
+                .from('restaurants')
+                .select('email')
+                .eq('id', email);
+
+            if (checkRestError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${checkRestError.message}` }
+            if (!checkRest.length)
+                throw { status: 404, message: "📮 Email not found" }
+
+            const { data: getClaims, error: getClaimsError } = await supabase()
+                .from('listings')
+                .select('*')
+                .eq('restaurant_email', email)
+                .eq('claimed', true);
+
+            if (getClaimsError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${getClaimsError.message}` }
+
+            res.status(200).json({ success: true, data: getClaims });
             next();
         }
         catch (err) {
