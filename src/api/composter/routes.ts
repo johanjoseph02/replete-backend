@@ -4,6 +4,7 @@ import { registerSchema } from './registerSchema';
 import { loginSchema } from './loginSchema';
 import { updateSchema } from './updateSchema';
 import { claimSchema } from './claimSchema';
+import { claimedSchema } from './claimedSchema';
 import yupValidate from '../../middleware/yupValidate';
 import bcrypt from 'bcryptjs';
 import validateRecaptcha from '../../middleware/validateCaptcha';
@@ -272,6 +273,7 @@ composterRoute.put(
             const { data: claimMeal, error: claimMealError } = await supabase()
                 .from('listings')
                 .update({
+                    updated_at: new Date(Date.now()),
                     composter_email: email,
                     claimed: true,
                 })
@@ -288,5 +290,40 @@ composterRoute.put(
         }
     }
 );
+
+composterRoute.get(
+    '/claimed',
+    yupValidate('body', claimedSchema),
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { email } = req.body;
+
+            const { data: checkComp, error: checkCompError } = await supabase()
+                .from('composters')
+                .select('email')
+                .eq('id', email);
+
+            if (checkCompError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${checkCompError.message}` }
+            if (!checkComp.length)
+                throw { status: 404, message: "📮 Email not found" }
+
+            const { data: getClaims, error: getClaimsError } = await supabase()
+                .from('listings')
+                .select('*')
+                .eq('composter_email', email);
+
+            if (getClaimsError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${getClaimsError.message}` }
+
+            res.status(200).json({ success: true, data: getClaims });
+            next();
+        }
+        catch (err) {
+            res.status(err.status || 500).json({ success: false, message: err.message });
+        }
+    }
+);
+
 
 export default composterRoute;
