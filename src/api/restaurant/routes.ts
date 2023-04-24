@@ -16,6 +16,32 @@ const restaurantRoute = Router();
 // restaurantRoute.use(validateRecaptcha);
 
 restaurantRoute.post(
+    '/profile',
+    yupValidate('body', claimedSchema),
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { email } = req.body;
+
+            const { data: checkRest, error: checkRestError } = await supabase()
+                .from('restaurants')
+                .select('*')
+                .eq('id', email);
+
+            if (checkRestError)
+                throw { status: 500, message: `⛔️ SUPABASE : ${checkRestError.message}` }
+            if (!checkRest.length)
+                throw { status: 404, message: "📮 Email not found" }
+
+            res.status(200).json({ success: true, data: checkRest });
+            next();
+        }
+        catch (err) {
+            res.status(err.status || 500).json({ success: false, message: err.message });
+        }
+    }
+);
+
+restaurantRoute.post(
     '/register',
     yupValidate('body', registerSchema),
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -74,7 +100,7 @@ restaurantRoute.post(
     }
 );
 
-restaurantRoute.get(
+restaurantRoute.post(
     '/login',
     yupValidate('body', loginSchema),
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -291,7 +317,7 @@ restaurantRoute.post(
     }
 );
 
-restaurantRoute.get(
+restaurantRoute.post(
     '/listed',
     yupValidate('body', listedSchema),
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -325,7 +351,7 @@ restaurantRoute.get(
     }
 );
 
-restaurantRoute.get(
+restaurantRoute.post(
     '/claimed',
     yupValidate('body', claimedSchema),
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
