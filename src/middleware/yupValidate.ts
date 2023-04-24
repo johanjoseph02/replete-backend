@@ -45,7 +45,7 @@ const yupValidate = ( location: RequestLocation, schema: yup.ObjectSchema<any, y
         } 
         catch (err) 
         {
-            res.status(400).json({ success:false, error: err.errors.join(', ') });
+            res.status(400).json({ success:false, message: err.errors.join(', ') });
         }
     };
 }
